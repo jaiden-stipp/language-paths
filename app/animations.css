@@ -1,0 +1,51 @@
+.spin {
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes branch-grow {
+  from {
+    stroke-dashoffset: 1;
+    opacity: 0;
+  }
+  58% {
+    opacity: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes convergence-grow {
+  from {
+    stroke-dashoffset: 1;
+    opacity: 0;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes node-bloom {
+  0% {
+    opacity: 0;
+    transform: translate(
+        calc(-50% + var(--spawn-x)),
+        calc(-50% + var(--spawn-y))
+      )
+      scale(0.22);
+  }
+  58% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.06);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
