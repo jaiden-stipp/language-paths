@@ -235,7 +235,51 @@ textarea {
   display: grid;
   height: calc(100dvh - 76px);
   min-height: 0;
-  grid-template-columns: 320px minmax(0, 1fr);
+  grid-template-columns: var(--control-panel-width, 320px) 9px minmax(0, 1fr);
+}
+
+.panel-resizer {
+  position: relative;
+  z-index: 12;
+  display: grid;
+  width: 9px;
+  min-width: 9px;
+  height: 100%;
+  place-items: center;
+  cursor: col-resize;
+  touch-action: none;
+  user-select: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  appearance: none;
+  background: linear-gradient(
+    to right,
+    transparent 4px,
+    var(--border) 4px 5px,
+    transparent 5px
+  );
+  transition:
+    background 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.panel-resizer:hover,
+.panel-resizer:focus-visible,
+.panel-resizer[data-resizing] {
+  background: linear-gradient(
+    to right,
+    transparent 3px,
+    var(--primary) 3px 6px,
+    transparent 6px
+  );
+  box-shadow: 0 0 10px color-mix(in oklab, var(--primary) 42%, transparent);
+}
+
+.panel-resizer:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
 }
 
 .error-shell {
@@ -298,6 +342,11 @@ textarea {
     grid-template-columns: 1fr;
   }
 
+  .workspace > .panel-resizer,
+  .graph-exploration > .panel-resizer {
+    display: none;
+  }
+
   .control-panel {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -328,10 +377,23 @@ textarea {
     grid-template-columns: 1fr;
   }
 
+  .graph-exploration.graph-workspace-expanded {
+    grid-template-rows: minmax(0, 1fr) minmax(150px, 32dvh);
+  }
+
+  .graph-workspace-expanded .tree-stage,
+  .graph-workspace-expanded .tree-viewport {
+    min-height: 0;
+  }
+
   .step-distribution {
     max-height: 430px;
     border-top: 0;
     border-left: 0;
+  }
+
+  .graph-workspace-expanded .step-distribution {
+    max-height: none;
   }
 
   .graph-panel {

@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  type CSSProperties,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -37,6 +38,7 @@ import { AdvancedSamplingPanel } from '@/components/explorer/advanced-sampling-p
 import { DistributionMass } from '@/components/explorer/distribution-mass';
 import { GenerationSpine } from '@/components/explorer/generation-spine';
 import { GraphViewport } from '@/components/explorer/graph-viewport';
+import { PanelResizer } from '@/components/explorer/panel-resizer';
 import { SelectedBranch } from '@/components/explorer/selected-branch';
 import { SelectedStepDistribution } from '@/components/explorer/selected-step-distribution';
 import { useGraphCamera } from '@/hooks/use-graph-camera';
@@ -178,6 +180,9 @@ export default function Home() {
     onSelect: setSelectedId,
   });
   const [branchPreviewExpanded, setBranchPreviewExpanded] = useState(false);
+  const [controlPanelWidth, setControlPanelWidth] = useState(320);
+  const [inspectorPanelWidth, setInspectorPanelWidth] = useState(290);
+  const [graphWorkspaceExpanded, setGraphWorkspaceExpanded] = useState(false);
   const [spinePathIds, setSpinePathIds] = useState<string[]>([
     'root',
     'demo-human',
@@ -208,6 +213,19 @@ export default function Home() {
       return nextPath;
     });
   }, []);
+
+  const toggleGraphWorkspace = useCallback(() => {
+    setGraphWorkspaceExpanded((expanded) => !expanded);
+  }, []);
+
+  useEffect(() => {
+    if (!graphWorkspaceExpanded) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setGraphWorkspaceExpanded(false);
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [graphWorkspaceExpanded]);
 
   const selectGraphNode = (nodeId: string) => {
     setSelectedId(nodeId);
@@ -812,7 +830,14 @@ export default function Home() {
         </div>
       </header>
 
-      <div className="workspace">
+      <div
+        className="workspace"
+        style={
+          {
+            '--control-panel-width': `${controlPanelWidth}px`,
+          } as CSSProperties
+        }
+      >
         <aside className="control-panel">
           <section>
             <div className="section-heading">
@@ -1065,6 +1090,15 @@ export default function Home() {
           </div>
         </aside>
 
+        <PanelResizer
+          label="Resize control panel"
+          value={controlPanelWidth}
+          minimum={260}
+          maximum={480}
+          defaultValue={320}
+          onResize={setControlPanelWidth}
+        />
+
         <section className="graph-panel" aria-label="Token possibility graph">
           <div className="graph-toolbar">
             <div>
@@ -1101,7 +1135,16 @@ export default function Home() {
             temperature={temperature}
           />
 
-          <div className="graph-exploration">
+          <div
+            className={`graph-exploration ${
+              graphWorkspaceExpanded ? 'graph-workspace-expanded' : ''
+            }`}
+            style={
+              {
+                '--inspector-panel-width': `${inspectorPanelWidth}px`,
+              } as CSSProperties
+            }
+          >
             <GraphViewport
               layout={layout}
               renderModel={renderModel}
@@ -1121,9 +1164,20 @@ export default function Home() {
               onZoom={zoomAroundPoint}
               onFit={fitGraph}
               onFocusNode={focusGraphNode}
+              workspaceExpanded={graphWorkspaceExpanded}
+              onToggleWorkspace={toggleGraphWorkspace}
               onExpand={(nodeId) => {
                 void expandNode(nodeId);
               }}
+            />
+            <PanelResizer
+              label="Resize selected-step inspector"
+              value={inspectorPanelWidth}
+              minimum={240}
+              maximum={520}
+              defaultValue={290}
+              direction={-1}
+              onResize={setInspectorPanelWidth}
             />
             <SelectedStepDistribution
               step={decisionStep}

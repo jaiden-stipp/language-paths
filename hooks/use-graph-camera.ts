@@ -31,6 +31,31 @@ export function useGraphCamera() {
     worldY: number;
   } | null>(null);
 
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport || typeof ResizeObserver === 'undefined') return;
+    let previousWidth = viewport.clientWidth;
+    let previousHeight = viewport.clientHeight;
+    const observer = new ResizeObserver(() => {
+      const nextWidth = viewport.clientWidth;
+      const nextHeight = viewport.clientHeight;
+      if (previousWidth > 0 && previousHeight > 0) {
+        viewport.scrollLeft = Math.max(
+          0,
+          viewport.scrollLeft + (previousWidth - nextWidth) / 2,
+        );
+        viewport.scrollTop = Math.max(
+          0,
+          viewport.scrollTop + (previousHeight - nextHeight) / 2,
+        );
+      }
+      previousWidth = nextWidth;
+      previousHeight = nextHeight;
+    });
+    observer.observe(viewport);
+    return () => observer.disconnect();
+  }, []);
+
   const commitCamera = useCallback(
     (nextZoom: number, left: number, top: number) => {
       const viewport = viewportRef.current;

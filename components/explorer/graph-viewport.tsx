@@ -7,7 +7,15 @@ import type {
   WheelEventHandler,
 } from 'react';
 import { useMemo } from 'react';
-import { LoaderCircle, Maximize2, Move, ZoomIn, ZoomOut } from 'lucide-react';
+import {
+  Expand,
+  LoaderCircle,
+  Maximize2,
+  Minimize2,
+  Move,
+  ZoomIn,
+  ZoomOut,
+} from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { MAX_ZOOM, MIN_ZOOM } from '@/lib/graph/geometry';
@@ -36,6 +44,8 @@ type GraphViewportProps = {
   onFit: () => void;
   onExpand: (nodeId: string) => void;
   onFocusNode: (nodeId: string) => void;
+  workspaceExpanded: boolean;
+  onToggleWorkspace: () => void;
 };
 
 export function GraphViewport({
@@ -58,6 +68,8 @@ export function GraphViewport({
   onFit,
   onExpand,
   onFocusNode,
+  workspaceExpanded,
+  onToggleWorkspace,
 }: GraphViewportProps) {
   const semanticLevel = semanticZoomLevel(zoom);
   const visibleNodeModels = useMemo(() => {
@@ -140,6 +152,19 @@ export function GraphViewport({
           onClick={onFit}
         >
           <Maximize2 />
+        </Button>
+        <Button
+          variant="outline"
+          size="icon"
+          aria-label={
+            workspaceExpanded
+              ? 'Restore graph workspace'
+              : 'Expand graph workspace'
+          }
+          aria-pressed={workspaceExpanded}
+          onClick={onToggleWorkspace}
+        >
+          {workspaceExpanded ? <Minimize2 /> : <Expand />}
         </Button>
       </div>
       <div className={`semantic-zoom-indicator ${semanticLevel}`}>

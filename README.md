@@ -46,6 +46,8 @@ Open `http://localhost:3000`, wait for the connection indicator to show the loca
 - Alternatives branching directly from that path stay visible; unrelated regions recede until selected or hovered.
 - Semantic zoom changes the representation instead of merely shrinking it: the overview groups each step's alternatives by probability mass, the focus view reveals the top three alternatives, and the detail view restores every visible token and connection.
 - The selected-step panel ranks the active decision's visible alternatives, marks the chosen token, and reports entropy plus hidden vocabulary mass.
+- Drag the divider beside the controls or selected-step inspector to resize either panel. Arrow keys resize a focused divider, Shift makes larger adjustments, and double-click restores its default width.
+- The expand control in the graph camera toolbar promotes the graph and inspector to a full-window workspace; press Escape or use the restore control to return.
 - Selected-node coverage separates the probability mass represented by visible branches from the model's hidden vocabulary tail.
 - Dashed cross-links connect expanded nodes whose visible next-token distributions have high cosine similarity; they do not claim the model reached the same internal state.
 - Temperature preview instantly sharpens or flattens the visible sibling probabilities while preserving their measured total mass.
