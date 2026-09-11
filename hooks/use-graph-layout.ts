@@ -9,6 +9,8 @@ import type {
   Point,
   SimilarityRelation,
 } from '@/lib/graph/types';
+// oxlint-disable-next-line import/default -- Vite exposes ?worker modules as constructors.
+import LayoutWorker from '@/workers/layout.worker?worker';
 
 type LayoutState = {
   layout: LayoutResult;
@@ -29,12 +31,7 @@ export function useGraphLayout(
 
   useEffect(() => {
     if (typeof Worker === 'undefined') return;
-    const worker = new Worker(
-      new URL('../workers/layout.worker.ts', import.meta.url),
-      {
-        type: 'module',
-      },
-    );
+    const worker = new LayoutWorker();
     workerRef.current = worker;
     worker.onmessage = (
       event: MessageEvent<{ version: number; layout: LayoutResult }>,
