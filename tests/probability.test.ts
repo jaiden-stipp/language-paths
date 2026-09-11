@@ -5,7 +5,9 @@ import {
   chooseWalkToken,
   distributionSnapshot,
   percent,
+  probabilityVisualScale,
   tokenLabel,
+  widthForNode,
 } from '@/lib/graph/probability';
 import type { PathNode, TokenChoice } from '@/lib/graph/types';
 
@@ -35,6 +37,31 @@ describe('sampling strategies', () => {
 });
 
 describe('probability views', () => {
+  it('creates a strong but bounded visual hierarchy', () => {
+    const nodeAt = (probability: number): PathNode => ({
+      id: `node-${probability}`,
+      parentId: 'root',
+      depth: 1,
+      token: ' token',
+      tokenId: 1,
+      conditionalProbability: probability,
+      cumulativeProbability: probability,
+      expanded: false,
+    });
+
+    expect(probabilityVisualScale(0.5)).toBeGreaterThan(
+      probabilityVisualScale(0.1),
+    );
+    expect(probabilityVisualScale(0.1)).toBeGreaterThan(
+      probabilityVisualScale(0.01),
+    );
+    expect(
+      widthForNode(nodeAt(0.5)) - widthForNode(nodeAt(0.01)),
+    ).toBeGreaterThan(25);
+    expect(widthForNode(nodeAt(1))).toBeLessThanOrEqual(84);
+    expect(widthForNode(nodeAt(0))).toBeGreaterThanOrEqual(30);
+  });
+
   it('deduplicates tokens and reports visible and hidden mass', () => {
     const snapshot = distributionSnapshot([
       ...options,

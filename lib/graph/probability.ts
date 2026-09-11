@@ -77,7 +77,11 @@ export function percent(value: number) {
 
 export function probabilityVisualScale(value: number) {
   const clamped = Math.max(0.0001, Math.min(1, value));
-  return Math.max(0, Math.min(1, (Math.log10(clamped) + 4) / 4));
+  const logarithmicPosition = Math.max(
+    0,
+    Math.min(1, (Math.log10(clamped) + 4) / 4),
+  );
+  return Math.pow(logarithmicPosition, 1.75);
 }
 
 export function applyTemperaturePreview(
@@ -131,7 +135,7 @@ export function widthForNode(node: PathNode) {
   if (node.id === 'root') return 88;
   return (
     Math.round(
-      (38 + probabilityVisualScale(node.conditionalProbability) * 30) * 1000,
+      (30 + probabilityVisualScale(node.conditionalProbability) * 54) * 1000,
     ) / 1000
   );
 }

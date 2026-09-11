@@ -91,7 +91,7 @@ export function createRenderModel({
     const probabilityScale = probabilityVisualScale(
       node.conditionalProbability,
     );
-    const baseWidth = 0.55 + Math.pow(probabilityScale, 1.5) * 5.2;
+    const baseWidth = 0.4 + Math.pow(probabilityScale, 1.35) * 6.2;
     const isAncestry =
       selectedPath.has(node.id) && selectedPath.has(node.parentId);
     if (!isAncestry) {
@@ -143,6 +143,8 @@ export function createRenderModel({
       spawnPoint: oldParent ?? currentParent ?? node,
       lineage: lineageById.get(node.id) ?? 0,
       probabilityScale,
+      dimmedOpacity: 0.12 + Math.pow(probabilityScale, 1.2) * 0.36,
+      nearbyOpacity: 0.64 + Math.pow(probabilityScale, 0.8) * 0.34,
       width: widthForNode(node),
       height: heightForNode(node),
       onPath: selectedPath.has(node.id),

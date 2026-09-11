@@ -290,28 +290,34 @@ export function GraphViewport({
                   node.id === 'root'
                     ? 'var(--lineage-1)'
                     : `var(--lineage-${lineage})`,
-                '--node-font-size': `${0.75 + probabilityScale * 0.09}rem`,
+                '--node-font-size': `${0.68 + probabilityScale * 0.24}rem`,
+                '--node-border-width': `${0.7 + probabilityScale * 1.5}px`,
                 '--node-border-strength': `${Math.round(
-                  28 + probabilityScale * 38,
+                  12 + probabilityScale * 76,
                 )}%`,
                 '--node-fill-strength': `${Math.round(
-                  5 + probabilityScale * 8,
+                  2 + probabilityScale * 18,
                 )}%`,
                 '--node-glow-strength': `${Math.round(
-                  5 + probabilityScale * 13,
+                  2 + probabilityScale * 28,
                 )}%`,
                 '--node-glow-radius': `${Math.round(
-                  5 + probabilityScale * 11,
+                  3 + probabilityScale * 20,
                 )}px`,
+                '--node-dimmed-opacity': model.dimmedOpacity,
+                '--node-nearby-opacity': model.nearbyOpacity,
               } as CSSProperties & {
                 '--spawn-x': string;
                 '--spawn-y': string;
                 '--lineage-color': string;
                 '--node-font-size': string;
+                '--node-border-width': string;
                 '--node-border-strength': string;
                 '--node-fill-strength': string;
                 '--node-glow-strength': string;
                 '--node-glow-radius': string;
+                '--node-dimmed-opacity': number;
+                '--node-nearby-opacity': number;
               };
 
               return (

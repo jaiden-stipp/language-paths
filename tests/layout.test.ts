@@ -46,6 +46,18 @@ describe('graph layout', () => {
       'demo-and',
     ]);
     expect(model.nodeModels).toHaveLength(layout.nodes.length);
+    const highProbability = model.nodeModels.find(
+      (entry) => entry.node.id === 'demo-meaning',
+    );
+    const lowProbability = model.nodeModels.find(
+      (entry) => entry.node.id === 'demo-context',
+    );
+    expect(highProbability?.dimmedOpacity).toBeGreaterThan(
+      lowProbability?.dimmedOpacity ?? 1,
+    );
+    expect(highProbability?.nearbyOpacity).toBeGreaterThan(
+      lowProbability?.nearbyOpacity ?? 1,
+    );
   });
 
   it.each([1, 100, 250])(

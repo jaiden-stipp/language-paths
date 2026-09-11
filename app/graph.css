@@ -463,7 +463,7 @@
     var(--muted-foreground)
   );
   text-align: center;
-  border: 1px solid
+  border: var(--node-border-width, 1px) solid
     color-mix(
       in oklab,
       var(--lineage-color, var(--path)) var(--node-border-strength, 34%),
@@ -604,16 +604,16 @@
 }
 
 .token-node.nearby {
-  opacity: 0.9;
+  opacity: var(--node-nearby-opacity, 0.82);
 }
 
 .token-node.dimmed {
-  opacity: 0.6;
+  opacity: var(--node-dimmed-opacity, 0.28);
 }
 
 .token-node.dimmed:hover,
 .token-node.dimmed:focus-visible {
-  opacity: 0.86;
+  opacity: 0.94;
 }
 
 .token-node.convergence-peer {
