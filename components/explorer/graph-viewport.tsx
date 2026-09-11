@@ -6,10 +6,12 @@ import type {
   RefObject,
   WheelEventHandler,
 } from 'react';
+import { useMemo } from 'react';
 import { LoaderCircle, Maximize2, Move, ZoomIn, ZoomOut } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { MAX_ZOOM, MIN_ZOOM } from '@/lib/graph/geometry';
+import { semanticZoomLevel } from '@/lib/graph/interpretability';
 import { percent, tokenLabel } from '@/lib/graph/probability';
 import { createRenderModel } from '@/lib/graph/render-model';
 import type { LayoutResult } from '@/lib/graph/types';
@@ -33,6 +35,7 @@ type GraphViewportProps = {
   onZoom: (zoom: number) => void;
   onFit: () => void;
   onExpand: (nodeId: string) => void;
+  onFocusNode: (nodeId: string) => void;
 };
 
 export function GraphViewport({
@@ -54,7 +57,49 @@ export function GraphViewport({
   onZoom,
   onFit,
   onExpand,
+  onFocusNode,
 }: GraphViewportProps) {
+  const semanticLevel = semanticZoomLevel(zoom);
+  const visibleNodeModels = useMemo(() => {
+    if (semanticLevel === 'detail') return renderModel.nodeModels;
+    if (semanticLevel === 'overview') {
+      return renderModel.nodeModels.filter((model) => model.onPath);
+    }
+    return renderModel.nodeModels.filter(
+      (model) =>
+        model.onPath || (model.directAlternative && model.alternativeRank <= 3),
+    );
+  }, [renderModel.nodeModels, semanticLevel]);
+  const visibleNodeIds = useMemo(
+    () => new Set(visibleNodeModels.map((model) => model.node.id)),
+    [visibleNodeModels],
+  );
+  const visibleInactiveEdges = useMemo(() => {
+    if (semanticLevel === 'overview') return [];
+    if (semanticLevel === 'detail') return renderModel.inactiveEdges;
+    return renderModel.inactiveEdges.filter(
+      (edge) =>
+        visibleNodeIds.has(edge.node.id) &&
+        Boolean(edge.node.parentId && visibleNodeIds.has(edge.node.parentId)),
+    );
+  }, [renderModel.inactiveEdges, semanticLevel, visibleNodeIds]);
+  const visibleConvergenceEdges = useMemo(() => {
+    if (semanticLevel === 'overview') return [];
+    if (semanticLevel === 'detail') return renderModel.convergenceEdges;
+    return renderModel.convergenceEdges.filter(
+      (edge) =>
+        edge.isNearby &&
+        visibleNodeIds.has(edge.source.id) &&
+        visibleNodeIds.has(edge.target.id),
+    );
+  }, [renderModel.convergenceEdges, semanticLevel, visibleNodeIds]);
+  const semanticLabel =
+    semanticLevel === 'overview'
+      ? 'Overview · step clusters'
+      : semanticLevel === 'focus'
+        ? 'Focus · top alternatives'
+        : 'Detail · all tokens';
+
   return (
     <div className="tree-stage">
       <div className="camera-hint" aria-hidden="true">
@@ -97,6 +142,9 @@ export function GraphViewport({
           <Maximize2 />
         </Button>
       </div>
+      <div className={`semantic-zoom-indicator ${semanticLevel}`}>
+        {semanticLabel}
+      </div>
 
       <div
         className="tree-viewport"
@@ -115,12 +163,15 @@ export function GraphViewport({
           }}
         >
           <div
-            className={`tree-canvas ${zoom < 0.18 ? 'detail-minimal' : zoom < 0.38 ? 'detail-low' : 'detail-full'}`}
-            style={{
-              width: layout.width,
-              height: layout.height,
-              transform: `scale(${zoom})`,
-            }}
+            className={`tree-canvas semantic-${semanticLevel} ${zoom < 0.18 ? 'detail-minimal' : zoom < 0.38 ? 'detail-low' : 'detail-full'}`}
+            style={
+              {
+                width: layout.width,
+                height: layout.height,
+                transform: `scale(${zoom})`,
+                '--semantic-zoom': zoom,
+              } as CSSProperties & { '--semantic-zoom': number }
+            }
           >
             <svg
               className="edge-layer"
@@ -148,7 +199,7 @@ export function GraphViewport({
                   <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--foreground)" />
                 </marker>
               </defs>
-              {renderModel.convergenceEdges.map((edge) => (
+              {visibleConvergenceEdges.map((edge) => (
                 <path
                   key={`convergence-${edge.id}`}
                   className={`convergence-edge ${edge.isNearby ? 'nearby' : ''} ${
@@ -168,7 +219,7 @@ export function GraphViewport({
                 </path>
               ))}
 
-              {renderModel.inactiveEdges.map((edge) => (
+              {visibleInactiveEdges.map((edge) => (
                 <path
                   key={`edge-${edge.node.id}`}
                   className={`tree-edge ${edge.isNearby ? 'nearby' : ''} ${
@@ -189,6 +240,25 @@ export function GraphViewport({
                   }
                 />
               ))}
+
+              {semanticLevel === 'overview' &&
+                renderModel.stepClusters.map((cluster) => (
+                  <path
+                    key={`${cluster.id}-edge`}
+                    className="step-cluster-edge"
+                    d={cluster.path}
+                    style={
+                      {
+                        '--lineage-color': `var(--lineage-${cluster.lineage})`,
+                        strokeWidth: Math.min(
+                          12,
+                          (1.2 + Math.sqrt(cluster.probabilityMass) * 2.8) /
+                            Math.max(zoom, 0.08),
+                        ),
+                      } as CSSProperties & { '--lineage-color': string }
+                    }
+                  />
+                ))}
 
               {renderModel.selectedEdges.map((edge) => (
                 <g
@@ -277,7 +347,7 @@ export function GraphViewport({
               )}
             </svg>
 
-            {renderModel.nodeModels.map((model) => {
+            {visibleNodeModels.map((model) => {
               const { node, spawnPoint, lineage, probabilityScale } = model;
               const nodeStyle = {
                 left: node.x,
@@ -382,6 +452,40 @@ export function GraphViewport({
                 </button>
               );
             })}
+
+            {semanticLevel === 'overview' &&
+              renderModel.stepClusters.map((cluster) => {
+                const clusterSize =
+                  78 + Math.sqrt(cluster.probabilityMass) * 34;
+                return (
+                  <button
+                    type="button"
+                    key={cluster.id}
+                    className="step-cluster"
+                    style={
+                      {
+                        left: cluster.x,
+                        top: cluster.y,
+                        width: clusterSize,
+                        height: clusterSize,
+                        '--lineage-color': `var(--lineage-${cluster.lineage})`,
+                        '--cluster-inverse-scale': 1 / Math.max(zoom, 0.08),
+                      } as CSSProperties & {
+                        '--lineage-color': string;
+                        '--cluster-inverse-scale': number;
+                      }
+                    }
+                    onClick={() => onFocusNode(cluster.parentId)}
+                    title={`Step ${cluster.depth}: ${cluster.count} other alternatives with ${percent(
+                      cluster.probabilityMass,
+                    )} probability mass. Click to inspect.`}
+                  >
+                    <strong>Step {cluster.depth}</strong>
+                    <span>{cluster.count} alternatives</span>
+                    <small>H {cluster.entropy.toFixed(1)}</small>
+                  </button>
+                );
+              })}
           </div>
         </div>
       </div>

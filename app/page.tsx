@@ -35,8 +35,10 @@ import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
 import { AdvancedSamplingPanel } from '@/components/explorer/advanced-sampling-panel';
 import { DistributionMass } from '@/components/explorer/distribution-mass';
+import { GenerationSpine } from '@/components/explorer/generation-spine';
 import { GraphViewport } from '@/components/explorer/graph-viewport';
 import { SelectedBranch } from '@/components/explorer/selected-branch';
+import { SelectedStepDistribution } from '@/components/explorer/selected-step-distribution';
 import { useGraphCamera } from '@/hooks/use-graph-camera';
 import { useGraphLayout } from '@/hooks/use-graph-layout';
 import { useModelRequest } from '@/hooks/use-model-request';
@@ -176,6 +178,10 @@ export default function Home() {
     onSelect: setSelectedId,
   });
   const [branchPreviewExpanded, setBranchPreviewExpanded] = useState(false);
+  const [spinePathIds, setSpinePathIds] = useState<string[]>([
+    'root',
+    'demo-human',
+  ]);
   const requestId = useRef(0);
   const previousCanvasSize = useRef({ width: 0, height: 0 });
   const baseNodes = useRef<PathNode[]>(demoNodes.map((node) => ({ ...node })));
@@ -192,6 +198,21 @@ export default function Home() {
     zoomAroundPoint,
     zoomRef,
   } = useGraphCamera();
+
+  const adoptSpinePath = useCallback((nextPath: string[]) => {
+    setSpinePathIds((current) => {
+      const nextIsEarlierOnCurrentPath =
+        nextPath.length < current.length &&
+        nextPath.every((id, index) => current[index] === id);
+      if (nextIsEarlierOnCurrentPath) return current;
+      return nextPath;
+    });
+  }, []);
+
+  const selectGraphNode = (nodeId: string) => {
+    setSelectedId(nodeId);
+    adoptSpinePath(getPathNodes(graphState, nodeId).map((node) => node.id));
+  };
 
   const checkConnection = useCallback(async () => {
     setConnection('checking');
@@ -303,25 +324,25 @@ export default function Home() {
     if (playingBack) dispatchActivity({ type: 'stop' });
     const target = graphState.nodesById.get(nodeId);
     if (!target || target.expanded || target.loading) {
-      setSelectedId(nodeId);
+      selectGraphNode(nodeId);
       return;
     }
     if (target.id.startsWith('demo-')) {
-      setSelectedId(nodeId);
+      selectGraphNode(nodeId);
       setNotice(
         'This branch is illustrative. Connect a model and explore from context for live paths.',
       );
       return;
     }
     if (connection !== 'online') {
-      setSelectedId(nodeId);
+      selectGraphNode(nodeId);
       setNotice(
         'Start llama.cpp, then use Check connection to explore this branch.',
       );
       return;
     }
 
-    setSelectedId(nodeId);
+    selectGraphNode(nodeId);
     dispatchGraph({
       type: 'patch',
       id: nodeId,
@@ -395,6 +416,7 @@ export default function Home() {
     };
     dispatchGraph({ type: 'replace', nodes: [root] });
     setSelectedId('root');
+    setSpinePathIds(['root']);
 
     try {
       const { options } = await requestTokenStep([], prompt);
@@ -516,6 +538,11 @@ export default function Home() {
             snapshot: builder.snapshot(),
           });
           setSelectedId(chosenChild.id);
+          adoptSpinePath(
+            getPathNodes(builder.snapshot(), chosenChild.id).map(
+              (node) => node.id,
+            ),
+          );
         }
         setNotice(
           `Step ${completed} of ${walkSteps}: ${walkStrategyLabels[
@@ -534,6 +561,9 @@ export default function Home() {
       fitNextLayout.current = true;
       dispatchGraph({ type: 'replace-snapshot', snapshot: builder.snapshot() });
       setSelectedId(cursor.id);
+      adoptSpinePath(
+        getPathNodes(builder.snapshot(), cursor.id).map((node) => node.id),
+      );
       setNotice(
         stopType !== 'limit'
           ? `The model finished naturally after ${completed} steps.`
@@ -578,6 +608,7 @@ export default function Home() {
       })),
     });
     setSelectedId('root');
+    setSpinePathIds(['root']);
     fitNextLayout.current = true;
     setNotice('Graph reset to the original base context.');
   };
@@ -616,6 +647,21 @@ export default function Home() {
   const positionById = useMemo(
     () => new Map(layout.nodes.map((node) => [node.id, node])),
     [layout.nodes],
+  );
+  const focusGraphNode = useCallback(
+    (nodeId: string) => {
+      setSelectedId(nodeId);
+      const viewport = viewportRef.current;
+      const position = positionById.get(nodeId);
+      if (!viewport || !position) return;
+      const nextZoom = clampZoom(Math.max(0.86, zoomRef.current));
+      commitCamera(
+        nextZoom,
+        position.x * nextZoom - viewport.clientWidth / 2,
+        position.y * nextZoom - viewport.clientHeight / 2,
+      );
+    },
+    [commitCamera, positionById, viewportRef, zoomRef],
   );
   const lineageById = useMemo(() => createLineageMap(nodes), [nodes]);
   const similarityLinks = useMemo(
@@ -670,21 +716,46 @@ export default function Home() {
   }, [fitGraph, layout, viewportRef, zoomRef]);
 
   const selectedNode = nodeById.get(selectedId) ?? nodeById.get('root');
-  const selectedPathText = useMemo(
-    () => getPathText(graphState, selectedId),
-    [graphState, selectedId],
-  );
   const selectedVisibleMass = selectedNode?.visibleProbabilityMass;
-  const selectedPathSequence = useMemo(
-    () => getPathNodes(graphState, selectedId).map((node) => node.id),
-    [graphState, selectedId],
+  const spinePathNodes = useMemo(
+    () =>
+      spinePathIds.flatMap((id) => {
+        const node = visualNodeById.get(id);
+        return node ? [node] : [];
+      }),
+    [spinePathIds, visualNodeById],
+  );
+  const spineTipId = spinePathNodes.at(-1)?.id ?? selectedId;
+  const spineTipNode = nodeById.get(spineTipId);
+  const selectedPathText = useMemo(
+    () => getPathText(graphState, spineTipId),
+    [graphState, spineTipId],
   );
   const selectedPath = useMemo(
-    () => new Set(selectedPathSequence),
-    [selectedPathSequence],
+    () => new Set(spinePathNodes.map((node) => node.id)),
+    [spinePathNodes],
   );
+  const decisionParentId = selectedNode?.parentId ?? selectedNode?.id;
+  const decisionParent = decisionParentId
+    ? visualNodeById.get(decisionParentId)
+    : undefined;
+  const decisionChoices = useMemo(
+    () =>
+      (decisionParentId
+        ? (graphState.childrenByParent.get(decisionParentId) ?? [])
+        : []
+      ).flatMap((id) => {
+        const node = visualNodeById.get(id);
+        return node ? [node] : [];
+      }),
+    [decisionParentId, graphState.childrenByParent, visualNodeById],
+  );
+  const decisionSelectedId = selectedNode?.parentId
+    ? selectedNode.id
+    : undefined;
+  const decisionStep = selectedNode?.parentId ? selectedNode.depth : 1;
   const togglePathPlayback = () => {
-    togglePlayback(selectedPathSequence);
+    togglePlayback(spinePathNodes.map((node) => node.id));
   };
   const renderModel = useMemo(
     () =>
@@ -922,7 +993,7 @@ export default function Home() {
                   exploring ||
                   (!playingBack &&
                     playbackIndex >= playbackPath.length - 1 &&
-                    selectedPathSequence.length < 2)
+                    spinePathNodes.length < 2)
                 }
               >
                 {playingBack ? <Pause /> : <Play />}
@@ -1011,12 +1082,18 @@ export default function Home() {
             context={treeContext}
             generatedText={selectedPathText}
             cumulativeProbability={
-              selectedNode && selectedNode.id !== 'root'
-                ? selectedNode.cumulativeProbability
+              spineTipNode && spineTipNode.id !== 'root'
+                ? spineTipNode.cumulativeProbability
                 : undefined
             }
             expanded={branchPreviewExpanded}
             onToggle={() => setBranchPreviewExpanded((expanded) => !expanded)}
+          />
+
+          <GenerationSpine
+            path={spinePathNodes}
+            selectedId={selectedId}
+            onSelect={focusGraphNode}
           />
 
           <DistributionMass
@@ -1024,28 +1101,38 @@ export default function Home() {
             temperature={temperature}
           />
 
-          <GraphViewport
-            layout={layout}
-            renderModel={renderModel}
-            zoom={zoom}
-            zoomRef={zoomRef}
-            viewportRef={viewportRef}
-            selectedId={selectedId}
-            temperature={temperature}
-            walking={walking}
-            playingBack={playingBack}
-            playbackIndex={playbackIndex}
-            playbackSegment={playbackSegment}
-            onWheel={handleWheel}
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerEnd={handlePointerEnd}
-            onZoom={zoomAroundPoint}
-            onFit={fitGraph}
-            onExpand={(nodeId) => {
-              void expandNode(nodeId);
-            }}
-          />
+          <div className="graph-exploration">
+            <GraphViewport
+              layout={layout}
+              renderModel={renderModel}
+              zoom={zoom}
+              zoomRef={zoomRef}
+              viewportRef={viewportRef}
+              selectedId={selectedId}
+              temperature={temperature}
+              walking={walking}
+              playingBack={playingBack}
+              playbackIndex={playbackIndex}
+              playbackSegment={playbackSegment}
+              onWheel={handleWheel}
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerEnd={handlePointerEnd}
+              onZoom={zoomAroundPoint}
+              onFit={fitGraph}
+              onFocusNode={focusGraphNode}
+              onExpand={(nodeId) => {
+                void expandNode(nodeId);
+              }}
+            />
+            <SelectedStepDistribution
+              step={decisionStep}
+              choices={decisionChoices}
+              selectedId={decisionSelectedId}
+              visibleMass={decisionParent?.visibleProbabilityMass}
+              temperature={temperature}
+            />
+          </div>
 
           <div className="graph-footer">
             <p aria-live="polite">{notice}</p>

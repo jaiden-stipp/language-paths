@@ -46,6 +46,12 @@ describe('graph layout', () => {
       'demo-and',
     ]);
     expect(model.nodeModels).toHaveLength(layout.nodes.length);
+    expect(model.stepClusters.length).toBeGreaterThan(0);
+    expect(
+      model.nodeModels.some(
+        (entry) => entry.directAlternative && entry.alternativeRank > 0,
+      ),
+    ).toBe(true);
     const highProbability = model.nodeModels.find(
       (entry) => entry.node.id === 'demo-meaning',
     );

@@ -42,7 +42,10 @@ Open `http://localhost:3000`, wait for the connection indicator to show the loca
 - A node's percentage is the probability of that token given the complete path before it.
 - Edge thickness represents the same conditional probability.
 - The selected path is highlighted from the original context to the selected token.
+- The generation spine presents that selected output in chronological order; selecting a spine token recenters its graph neighborhood without discarding the longer route.
 - Alternatives branching directly from that path stay visible; unrelated regions recede until selected or hovered.
+- Semantic zoom changes the representation instead of merely shrinking it: the overview groups each step's alternatives by probability mass, the focus view reveals the top three alternatives, and the detail view restores every visible token and connection.
+- The selected-step panel ranks the active decision's visible alternatives, marks the chosen token, and reports entropy plus hidden vocabulary mass.
 - Selected-node coverage separates the probability mass represented by visible branches from the model's hidden vocabulary tail.
 - Dashed cross-links connect expanded nodes whose visible next-token distributions have high cosine similarity; they do not claim the model reached the same internal state.
 - Temperature preview instantly sharpens or flattens the visible sibling probabilities while preserving their measured total mass.
@@ -66,14 +69,14 @@ Model requests have a 30-second timeout and are cancelled when the graph is rese
 ## Architecture
 
 - `app/page.tsx` coordinates exploration state and the main workspace.
-- `components/explorer` contains the graph viewport and focused control/readout components.
+- `components/explorer` contains the graph viewport, chronological generation spine, selected-step distribution inspector, and focused control/readout components.
 - `lib/model` validates the llama.cpp boundary and owns completion requests.
 - `lib/graph` contains indexed graph storage, probability transforms, similarity, layout, geometry, and cached render-model construction.
 - `workers/layout.worker.ts` runs the force simulation away from the browser's main thread. New topology reuses the previous coordinates, so existing regions move less while new alternatives settle around their parent.
 
 The graph stores parent relationships rather than copying every ancestor token and full text onto every node. Exact token paths and visible branch text are reconstructed from the indexed graph only when they are needed.
 
-At distant zoom levels, the viewport suppresses minor labels and expensive visual effects. Nodes and the selected route remain available, and full detail returns automatically when zooming in.
+At distant zoom levels, the viewport replaces off-path token clouds with one readable cluster per generation step. Medium zoom shows the selected route and its top alternatives; close zoom returns every visible token, percentage, and connection. This preserves chronological and probabilistic structure without asking the browser to draw illegible detail.
 
 ## Validation
 
@@ -92,6 +95,6 @@ npm run test
 npm run build
 ```
 
-The regression suite covers llama.cpp response validation, sampling strategies, hidden probability mass, temperature previews, exact path reconstruction, lineage assignment, distribution similarity, deterministic layout, selected-route rendering, reset behavior, and first-token tethering. A medium graph layout test guards against accidental algorithmic regressions without imposing hardware-specific animation timing.
+The regression suite covers llama.cpp response validation, sampling strategies, hidden probability mass, temperature previews, semantic-zoom thresholds and clusters, entropy summaries, exact path reconstruction, lineage assignment, distribution similarity, deterministic layout, selected-route rendering, reset behavior, and first-token tethering. A medium graph layout test guards against accidental algorithmic regressions without imposing hardware-specific animation timing.
 
 The interface supports up to 250 automatic steps and up to eight alternatives per expanded node. Very large graphs still create substantial DOM and SVG output; the force simulation is off-thread, but browser rendering cost will depend on zoom level and hardware.

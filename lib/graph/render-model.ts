@@ -4,6 +4,7 @@ import {
   probabilityVisualScale,
   widthForNode,
 } from '@/lib/graph/probability';
+import { createStepClusters } from '@/lib/graph/interpretability';
 import type {
   DistributionLink,
   Point,
@@ -24,6 +25,30 @@ export function createRenderModel({
   spawnOrigins: Map<string, Point>;
 }) {
   const positionById = new Map(nodes.map((node) => [node.id, node]));
+  const siblingsByParent = new Map<string, PositionedNode[]>();
+  for (const node of nodes) {
+    if (!node.parentId) continue;
+    const siblings = siblingsByParent.get(node.parentId) ?? [];
+    siblings.push(node);
+    siblingsByParent.set(node.parentId, siblings);
+  }
+  const siblingRankById = new Map<string, number>();
+  const alternativeRankById = new Map<string, number>();
+  for (const siblings of siblingsByParent.values()) {
+    [...siblings]
+      .sort(
+        (left, right) =>
+          right.conditionalProbability - left.conditionalProbability,
+      )
+      .forEach((node, index) => siblingRankById.set(node.id, index + 1));
+    siblings
+      .filter((node) => !selectedPath.has(node.id))
+      .sort(
+        (left, right) =>
+          right.conditionalProbability - left.conditionalProbability,
+      )
+      .forEach((node, index) => alternativeRankById.set(node.id, index + 1));
+  }
   const nearbyIds = new Set<string>();
   const convergencePeerIds = new Set<string>();
   for (const node of nodes) {
@@ -149,6 +174,12 @@ export function createRenderModel({
       height: heightForNode(node),
       onPath: selectedPath.has(node.id),
       nearby: nearbyIds.has(node.id),
+      directAlternative:
+        Boolean(node.parentId) &&
+        selectedPath.has(node.parentId ?? '') &&
+        !selectedPath.has(node.id),
+      siblingRank: siblingRankById.get(node.id) ?? 1,
+      alternativeRank: alternativeRankById.get(node.id) ?? 0,
       convergencePeer: convergencePeerIds.has(node.id),
     };
   });
@@ -159,5 +190,6 @@ export function createRenderModel({
     selectedEdges,
     nodeModels,
     nearbyIds,
+    stepClusters: createStepClusters(nodes, selectedPath, lineageById),
   };
 }

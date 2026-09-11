@@ -93,7 +93,9 @@ export function useGraphCamera() {
   const handlePointerDown = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
       if (event.pointerType === 'mouse' && event.button !== 0) return;
-      if ((event.target as HTMLElement).closest('.token-node')) return;
+      if ((event.target as HTMLElement).closest('.token-node, .step-cluster')) {
+        return;
+      }
       const viewport = event.currentTarget;
       const point = { x: event.clientX, y: event.clientY };
       pointers.current.set(event.pointerId, point);

@@ -324,6 +324,16 @@ textarea {
     min-height: 520px;
   }
 
+  .graph-exploration {
+    grid-template-columns: 1fr;
+  }
+
+  .step-distribution {
+    max-height: 430px;
+    border-top: 0;
+    border-left: 0;
+  }
+
   .graph-panel {
     overflow: visible;
   }
@@ -355,8 +365,18 @@ textarea {
     margin-inline: 0.9rem;
   }
 
+  .generation-spine,
+  .distribution-mass {
+    margin-inline: 0.9rem;
+  }
+
   .camera-hint {
     display: none;
+  }
+
+  .semantic-zoom-indicator {
+    left: 0.55rem;
+    transform: none;
   }
 
   .camera-controls {
