@@ -643,9 +643,14 @@ export default function Home() {
     () => createSimilarityRelations(nodes),
     [nodes],
   );
+  const layoutSelectedPath = useMemo(
+    () => new Set(spinePathIds),
+    [spinePathIds],
+  );
   const { layout: calculatedLayout, spawnOrigins } = useGraphLayout(
     layoutNodes,
     similarityRelations,
+    layoutSelectedPath,
   );
   const visualNodeById = useMemo(
     () => new Map(visualNodes.map((node) => [node.id, node])),

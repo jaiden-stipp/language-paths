@@ -74,7 +74,7 @@ Model requests have a 30-second timeout and are cancelled when the graph is rese
 - `components/explorer` contains the graph viewport, chronological generation spine, selected-step distribution inspector, and focused control/readout components.
 - `lib/model` validates the llama.cpp boundary and owns completion requests.
 - `lib/graph` contains indexed graph storage, probability transforms, similarity, layout, geometry, and cached render-model construction.
-- `workers/layout.worker.ts` runs the force simulation away from the browser's main thread. New topology reuses the previous coordinates, so existing regions move less while new alternatives settle around their parent.
+- `workers/layout.worker.ts` runs the force simulation away from the browser's main thread. Branch headings follow their incoming edge with gradual curvature, alternatives settle locally around each selected step, and only off-path nodes receive an interior-filling pull. New topology reuses previous coordinates through adaptive stability anchors, while lopsided or hollow layouts are allowed to relax more strongly.
 
 The graph stores parent relationships rather than copying every ancestor token and full text onto every node. Exact token paths and visible branch text are reconstructed from the indexed graph only when they are needed.
 

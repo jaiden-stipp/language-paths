@@ -66,6 +66,74 @@ describe('graph layout', () => {
     );
   });
 
+  it('keeps alternatives local while the selected route curves gradually', () => {
+    const nodes: PathNode[] = [
+      {
+        id: 'root',
+        parentId: null,
+        depth: 0,
+        token: 'context',
+        tokenId: null,
+        conditionalProbability: 1,
+        cumulativeProbability: 1,
+        expanded: true,
+      },
+    ];
+    const selectedPath = new Set(['root']);
+    let parentId = 'root';
+    for (let step = 0; step < 18; step += 1) {
+      for (let alternative = 0; alternative < 5; alternative += 1) {
+        const id = `organic-${step}-${alternative}`;
+        nodes.push({
+          id,
+          parentId,
+          depth: step + 1,
+          token: id,
+          tokenId: step * 5 + alternative,
+          conditionalProbability: 0.42 / (alternative + 1),
+          cumulativeProbability: 0.42 ** (step + 1),
+          expanded: alternative === 0,
+        });
+        if (alternative === 0) selectedPath.add(id);
+      }
+      parentId = `organic-${step}-0`;
+    }
+
+    const layout = createLayout(nodes, [], new Map(), selectedPath);
+    const byId = new Map(layout.nodes.map((node) => [node.id, node]));
+    const alternativeDistances = layout.nodes.flatMap((node) => {
+      if (!node.parentId || selectedPath.has(node.id)) return [];
+      const parent = byId.get(node.parentId);
+      return parent ? [Math.hypot(node.x - parent.x, node.y - parent.y)] : [];
+    });
+    expect(Math.max(...alternativeDistances)).toBeLessThan(220);
+
+    const turns: number[] = [];
+    for (let step = 2; step < 18; step += 1) {
+      const grandparent = byId.get(`organic-${step - 2}-0`);
+      const parent = byId.get(`organic-${step - 1}-0`);
+      const child = byId.get(`organic-${step}-0`);
+      if (!grandparent || !parent || !child) continue;
+      const incoming = Math.atan2(
+        parent.y - grandparent.y,
+        parent.x - grandparent.x,
+      );
+      const outgoing = Math.atan2(child.y - parent.y, child.x - parent.x);
+      turns.push(
+        Math.abs(
+          Math.atan2(
+            Math.sin(outgoing - incoming),
+            Math.cos(outgoing - incoming),
+          ),
+        ),
+      );
+    }
+    expect(turns.some((turn) => turn > 0.025)).toBe(true);
+    expect(
+      turns.reduce((sum, turn) => sum + turn, 0) / turns.length,
+    ).toBeLessThan(0.8);
+  });
+
   it.each([1, 100, 250])(
     'lays out a %i-step, eight-alternative expansion off the UI thread',
     (steps) => {

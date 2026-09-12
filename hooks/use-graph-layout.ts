@@ -20,9 +20,10 @@ type LayoutState = {
 export function useGraphLayout(
   nodes: PathNode[],
   relations: SimilarityRelation[],
+  selectedPath: Set<string>,
 ) {
   const [state, setState] = useState<LayoutState>(() => ({
-    layout: createLayout(nodes, relations),
+    layout: createLayout(nodes, relations, new Map(), selectedPath),
     spawnOrigins: new Map(),
   }));
   const layoutRef = useRef(state.layout);
@@ -63,17 +64,18 @@ export function useGraphLayout(
         nodes,
         relations,
         previousPositions,
+        selectedPathIds: [...selectedPath],
       });
       return;
     }
     queueMicrotask(() => {
       if (version !== versionRef.current) return;
       const previous = new Map(previousPositions);
-      const layout = createLayout(nodes, relations, previous);
+      const layout = createLayout(nodes, relations, previous, selectedPath);
       layoutRef.current = layout;
       setState({ layout, spawnOrigins: previous });
     });
-  }, [nodes, relations]);
+  }, [nodes, relations, selectedPath]);
 
   return state;
 }

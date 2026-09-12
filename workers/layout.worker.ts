@@ -8,11 +8,18 @@ type LayoutRequest = {
   nodes: PathNode[];
   relations: SimilarityRelation[];
   previousPositions: Array<[string, Point]>;
+  selectedPathIds: string[];
 };
 
 self.onmessage = (event: MessageEvent<LayoutRequest>) => {
-  const { version, nodes, relations, previousPositions } = event.data;
-  const layout = createLayout(nodes, relations, new Map(previousPositions));
+  const { version, nodes, relations, previousPositions, selectedPathIds } =
+    event.data;
+  const layout = createLayout(
+    nodes,
+    relations,
+    new Map(previousPositions),
+    new Set(selectedPathIds),
+  );
   self.postMessage({ version, layout });
 };
 
